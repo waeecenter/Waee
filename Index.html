@@ -307,6 +307,14 @@
             padding: 15px;
             margin-bottom: 10px;
         }
+
+        .history-item {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
         
         @media (max-width: 768px) {
             .main-container {
@@ -407,12 +415,12 @@
 
         <!-- التبويبات -->
         <div class="tabs">
-            <button class="tab active" onclick="showTab('dashboard')">📊 لوحة التحكم</button>
-            <button class="tab" onclick="showTab('income')">💰 الإيرادات</button>
-            <button class="tab" onclick="showTab('expenses')">💸 المصروفات</button>
-            <button class="tab" onclick="showTab('salaries')">💼 الرواتب</button>
-            <button class="tab" onclick="showTab('debts')">📋 الديون</button>
-            <button class="tab" onclick="showTab('reports')">📈 التقارير</button>
+            <button id="tab-dashboard" class="tab active" onclick="showTab('dashboard', event)">📊 لوحة التحكم</button>
+            <button id="tab-income" class="tab" onclick="showTab('income', event)">💰 الإيرادات</button>
+            <button id="tab-expenses" class="tab" onclick="showTab('expenses', event)">💸 المصروفات</button>
+            <button id="tab-salaries" class="tab" onclick="showTab('salaries', event)">💼 الرواتب</button>
+            <button id="tab-debts" class="tab" onclick="showTab('debts', event)">📋 الديون</button>
+            <button id="tab-reports" class="tab" onclick="showTab('reports', event)">📈 التقارير</button>
         </div>
 
         <!-- المحتوى -->
@@ -884,7 +892,7 @@
         }
 
         // إدارة التبويبات
-        function showTab(tabName) {
+        function showTab(tabName, evt) {
             // إخفاء جميع التبويبات
             const tabs = document.querySelectorAll('.tab-content');
             tabs.forEach(tab => tab.style.display = 'none');
@@ -897,7 +905,12 @@
             document.getElementById(tabName).style.display = 'block';
             
             // إضافة الفئة النشطة للزر المحدد
-            event.target.classList.add('active');
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
+            } else {
+                const btn = document.getElementById(`tab-${tabName}`);
+                if (btn) btn.classList.add('active');
+            }
             
             currentTab = tabName;
             
@@ -1282,6 +1295,68 @@
                 
                 const users = JSON.parse(localStorage.getItem('accounting_users') || '{}');
                 const currency = users[currentUser]?.currency || 'ريال';
-                
+
                 employeeElement.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span><strong>${employee.name}</strong> - ${employee.position}</span>
+                    </div>
+                    <div><strong>الراتب:</strong> ${employee.salary.toLocaleString()} ${currency}</div>
+                    <div><strong>تاريخ التوظيف:</strong> ${employee.hireDate}</div>
+                    ${employee.notes ? `<div><strong>ملاحظات:</strong> ${employee.notes}</div>` : ''}
+                `;
+                employeesList.appendChild(employeeElement);
+            });
+        }
+
+        function displaySalaryHistory() {
+            const data = getUserData();
+            if (!data) return;
+
+            const historyList = document.getElementById('salaryHistoryList');
+            historyList.innerHTML = '';
+
+            const users = JSON.parse(localStorage.getItem('accounting_users') || '{}');
+            const currency = users[currentUser]?.currency || 'ريال';
+
+            data.salaryHistory.forEach(record => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span><strong>${record.name}</strong></span>
+                        <span>${record.amount.toLocaleString()} ${currency}</span>
+                    </div>
+                    <div style="font-size: 0.9em; color: #666;">📅 ${record.date}</div>
+                `;
+                historyList.appendChild(item);
+            });
+        }
+
+        function payAllSalaries() {
+            const data = getUserData();
+            if (!data) return;
+
+            const today = new Date().toISOString().split('T')[0];
+
+            data.employees.forEach(emp => {
+                if (emp.active) {
+                    data.salaryHistory.push({
+                        id: Date.now() + Math.random(),
+                        name: emp.name,
+                        amount: emp.salary,
+                        date: today
+                    });
+                }
+            });
+
+            saveUserData(data);
+            showNotification('تم صرف جميع الرواتب', 'success');
+
+            if (currentTab === 'salaries') {
+                displaySalaryHistory();
+            }
+            updateDashboard();
+        }
+    </script>
+</body>
+</html>
